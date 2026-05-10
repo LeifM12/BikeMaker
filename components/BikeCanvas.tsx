@@ -1,261 +1,161 @@
 "use client";
 
-import type { Discipline, Part, Selection } from "@/lib/types";
+import { useState } from "react";
+import type { CategoryId, Discipline, Part, Selection } from "@/lib/types";
 
 interface Props {
   selection: Selection;
   discipline: Discipline;
 }
 
-const ghost = "#262626";
-
-const color = (p: Part | undefined, fallback = ghost) =>
-  ((p?.attrs.color as string | undefined) ?? fallback);
+const calloutOrder: { id: CategoryId; label: string }[] = [
+  { id: "fork", label: "Fork" },
+  { id: "shock", label: "Shock" },
+  { id: "wheelset", label: "Wheels" },
+  { id: "brakeset", label: "Brakes" },
+  { id: "derailleur", label: "Drivetrain" },
+  { id: "handlebar", label: "Cockpit" },
+  { id: "seatpost", label: "Seatpost" },
+  { id: "tire_rear", label: "Tire" },
+];
 
 export default function BikeCanvas({ selection, discipline }: Props) {
-  const isDH = discipline === "downhill";
   const frame = selection.frame;
-  const fork = selection.fork;
-  const shock = selection.shock;
-  const wheel = selection.wheelset;
-  const tireF = selection.tire_front;
-  const tireR = selection.tire_rear;
-  const bar = selection.handlebar;
-  const stem = selection.stem;
-  const saddle = selection.saddle;
-  const seatpost = selection.seatpost;
-  const crank = selection.crank;
+  const callouts = calloutOrder
+    .map(({ id, label }) => ({ id, label, part: selection[id] }))
+    .filter((c) => c.part);
 
-  // Mullet detection
-  const ws = wheel?.attrs.size_rear ?? frame?.attrs.wheel_size;
-  const mullet = ws === "275" || frame?.attrs.wheel_size === "mullet";
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <div className="relative flex-1">
+        {frame?.image_url ? (
+          <FrameHero frame={frame} />
+        ) : (
+          <PlaceholderSVG discipline={discipline} />
+        )}
+      </div>
 
-  const frameColor = color(frame);
-  const forkColor = color(fork, frameColor);
-  const wheelColor = color(wheel, "#3f3f46");
-  const tireFColor = "#0a0a0a";
-  const tireRColor = "#0a0a0a";
-  const tireFWidth = Math.max(8, Math.min(16, Number(tireF?.attrs.width ?? 2.4) * 5.5));
-  const tireRWidth = Math.max(8, Math.min(16, Number(tireR?.attrs.width ?? 2.4) * 5.5));
-  const saddleColor = color(saddle, "#1a1a1a");
-  const barColor = color(bar, "#1a1a1a");
-  const seatpostColor = color(seatpost, "#1a1a1a");
-  const crankColor = color(crank, "#1a1a1a");
+      {callouts.length > 0 && (
+        <div className="scroll-thin shrink-0 overflow-x-auto border-t border-neutral-900 bg-neutral-950/80 px-3 py-2 backdrop-blur">
+          <div className="flex gap-2">
+            {callouts.map((c) => (
+              <Callout key={c.id} label={c.label} part={c.part!} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-  // Geometry
-  const rearR = mullet ? 110 : 125;
-  const frontR = 125;
-  const groundY = 420;
-  const rearCx = 180;
-  const rearCy = groundY - rearR;
-  const frontCx = isDH ? 660 : 640;
-  const frontCy = groundY - frontR;
+function FrameHero({ frame }: { frame: Part }) {
+  const [errored, setErrored] = useState(false);
+  if (errored || !frame.image_url) return <PlaceholderSVG discipline="enduro" />;
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={frame.image_url}
+        alt={`${frame.brand} ${frame.model}`}
+        className="absolute inset-0 h-full w-full object-contain p-6"
+        onError={() => setErrored(true)}
+        loading="eager"
+      />
+      <div className="absolute right-4 top-4 max-w-[55%] rounded-xl border border-neutral-800 bg-neutral-950/80 px-3 py-2 backdrop-blur">
+        <div className="text-[10px] uppercase tracking-widest text-neutral-500">
+          Frame
+        </div>
+        <div className="text-sm font-medium">
+          {frame.brand} <span className="text-neutral-400">{frame.model}</span>
+        </div>
+      </div>
+    </>
+  );
+}
 
-  // Frame triangle (XC-ish enduro geometry; DH a bit slacker/longer)
-  const bbX = isDH ? 320 : 330;
-  const bbY = groundY - 60;
-  const headTopX = isDH ? 555 : 535;
-  const headTopY = isDH ? 195 : 175;
-  const headBotX = isDH ? 575 : 555;
-  const headBotY = isDH ? 250 : 235;
-  const seatTopX = bbX + 8;
-  const seatTopY = isDH ? 230 : 205;
-  // For DH the seat tube is shorter (rigid post), enduro has long dropper
-  const saddleY = isDH ? seatTopY - 10 : seatTopY - 70;
-  const saddleX = seatTopX - 10;
+function Callout({ label, part }: { label: string; part: Part }) {
+  const [errored, setErrored] = useState(false);
+  return (
+    <div className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/60 p-1.5 pr-3">
+      <div className="size-9 shrink-0 overflow-hidden rounded-md border border-neutral-800 bg-neutral-950">
+        {part.image_url && !errored ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={part.image_url}
+            alt={part.brand}
+            className="h-full w-full object-contain"
+            onError={() => setErrored(true)}
+            loading="lazy"
+          />
+        ) : (
+          <div
+            className="h-full w-full"
+            style={{ background: (part.attrs.color as string) ?? "#171717" }}
+          />
+        )}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[9px] uppercase tracking-widest text-neutral-500">
+          {label}
+        </div>
+        <div className="truncate text-xs font-medium">
+          {part.brand}{" "}
+          <span className="text-neutral-400">
+            {part.model.length > 14 ? part.model.slice(0, 14) + "…" : part.model}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  // Fork: single-crown for enduro, dual-crown for DH
-  const forkCrownTopY = headTopY - 10;
-  const forkCrownBotY = headBotY + 10;
-
+function PlaceholderSVG({ discipline }: { discipline: Discipline }) {
+  const isDH = discipline === "downhill";
   return (
     <svg
       viewBox="0 0 800 500"
       className="absolute inset-0 h-full w-full"
       role="img"
-      aria-label="Bike preview"
+      aria-label="Bike preview placeholder"
     >
       <defs>
         <radialGradient id="floor" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#1a1a1a" stopOpacity="0.7" />
           <stop offset="100%" stopColor="#0a0a0a" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={wheelColor} stopOpacity="1" />
-          <stop offset="100%" stopColor={wheelColor} stopOpacity="0.7" />
-        </linearGradient>
       </defs>
-
-      {/* Ground shadow */}
-      <ellipse cx="400" cy={groundY + 50} rx="380" ry="22" fill="url(#floor)" />
-
-      {/* Wheels: tire ring + rim + spokes */}
-      <Wheel
-        cx={rearCx}
-        cy={rearCy}
-        r={rearR}
-        tireWidth={tireRWidth}
-        tireColor={tireRColor}
-        rimColor={wheelColor}
-      />
-      <Wheel
-        cx={frontCx}
-        cy={frontCy}
-        r={frontR}
-        tireWidth={tireFWidth}
-        tireColor={tireFColor}
-        rimColor={wheelColor}
-      />
-
-      {/* Brake rotors */}
-      <circle cx={rearCx} cy={rearCy} r="38" fill="none" stroke="#3f3f46" strokeWidth="1.5" />
-      <circle cx={frontCx} cy={frontCy} r="40" fill="none" stroke="#3f3f46" strokeWidth="1.5" />
-
-      {/* Chain stays */}
-      <line x1={bbX} y1={bbY} x2={rearCx} y2={rearCy} stroke={frameColor} strokeWidth="11" strokeLinecap="round" />
-      {/* Seat stays */}
-      <line x1={seatTopX} y1={seatTopY} x2={rearCx} y2={rearCy} stroke={frameColor} strokeWidth="9" strokeLinecap="round" />
-      {/* Seat tube */}
-      <line x1={bbX} y1={bbY} x2={seatTopX} y2={seatTopY} stroke={frameColor} strokeWidth="13" strokeLinecap="round" />
-      {/* Down tube */}
-      <line x1={bbX} y1={bbY} x2={headBotX} y2={headBotY} stroke={frameColor} strokeWidth="15" strokeLinecap="round" />
-      {/* Top tube */}
-      <line x1={seatTopX} y1={seatTopY} x2={headTopX} y2={headTopY} stroke={frameColor} strokeWidth="13" strokeLinecap="round" />
-      {/* Head tube */}
-      <line x1={headTopX} y1={headTopY} x2={headBotX} y2={headBotY} stroke={frameColor} strokeWidth="18" strokeLinecap="round" />
-
-      {/* Rear shock (between top tube/seat stay area) */}
-      {isDH ? (
-        <ShockLine x1={bbX + 30} y1={bbY - 30} x2={seatTopX + 10} y2={seatTopY + 30} color={color(shock, "#404040")} thick />
-      ) : (
-        <ShockLine x1={bbX + 5} y1={bbY - 50} x2={seatTopX + 5} y2={seatTopY + 30} color={color(shock, "#404040")} />
-      )}
-
+      <ellipse cx="400" cy="470" rx="380" ry="22" fill="url(#floor)" />
+      {/* Wheels */}
+      <circle cx="180" cy="295" r="125" fill="none" stroke="#262626" strokeWidth="14" />
+      <circle cx="180" cy="295" r="100" fill="none" stroke="#3f3f46" strokeOpacity="0.5" strokeWidth="2" />
+      <circle cx={isDH ? 660 : 640} cy="295" r="125" fill="none" stroke="#262626" strokeWidth="14" />
+      <circle cx={isDH ? 660 : 640} cy="295" r="100" fill="none" stroke="#3f3f46" strokeOpacity="0.5" strokeWidth="2" />
+      {/* Frame triangle (hint) */}
+      <line x1="330" y1="360" x2="180" y2="295" stroke="#262626" strokeWidth="11" strokeLinecap="round" />
+      <line x1="338" y1="205" x2="180" y2="295" stroke="#262626" strokeWidth="9" strokeLinecap="round" />
+      <line x1="330" y1="360" x2="338" y2="205" stroke="#262626" strokeWidth="13" strokeLinecap="round" />
+      <line x1="330" y1="360" x2="555" y2="235" stroke="#262626" strokeWidth="15" strokeLinecap="round" />
+      <line x1="338" y1="205" x2="535" y2="175" stroke="#262626" strokeWidth="13" strokeLinecap="round" />
+      <line x1="535" y1="175" x2="555" y2="235" stroke="#262626" strokeWidth="18" strokeLinecap="round" />
       {/* Fork */}
       {isDH ? (
         <>
-          {/* Dual crown */}
-          <rect x={headBotX - 18} y={forkCrownTopY - 10} width="40" height="10" rx="2" fill={forkColor} />
-          <rect x={headBotX - 18} y={forkCrownBotY} width="40" height="10" rx="2" fill={forkColor} />
-          {/* Stanchion + lowers */}
-          <line x1={headBotX - 8} y1={forkCrownBotY + 10} x2={frontCx - 4} y2={frontCy} stroke={forkColor} strokeWidth="9" strokeLinecap="round" />
-          <line x1={headBotX + 12} y1={forkCrownBotY + 10} x2={frontCx + 4} y2={frontCy} stroke={forkColor} strokeWidth="9" strokeLinecap="round" />
+          <line x1="555" y1="225" x2={660} y2="295" stroke="#262626" strokeWidth="9" strokeLinecap="round" />
+          <line x1="565" y1="225" x2={660} y2="295" stroke="#262626" strokeWidth="9" strokeLinecap="round" />
         </>
       ) : (
-        <>
-          {/* Single crown stanchion */}
-          <line x1={headBotX} y1={headBotY} x2={frontCx} y2={frontCy} stroke={forkColor} strokeWidth="11" strokeLinecap="round" />
-        </>
+        <line x1="555" y1="235" x2={640} y2="295" stroke="#262626" strokeWidth="11" strokeLinecap="round" />
       )}
-
-      {/* Stem */}
-      <line x1={headTopX} y1={headTopY} x2={headTopX + 32} y2={headTopY - 18} stroke={color(stem, "#262626")} strokeWidth="9" strokeLinecap="round" />
-      {/* Bar */}
-      <line x1={headTopX + 32} y1={headTopY - 28} x2={headTopX + 32} y2={headTopY - 8} stroke={barColor} strokeWidth="6" strokeLinecap="round" />
-      {/* Bar grip */}
-      <circle cx={headTopX + 32} cy={headTopY - 32} r="6" fill={barColor} />
-
-      {/* Seatpost + saddle */}
-      <line x1={seatTopX} y1={seatTopY} x2={saddleX} y2={saddleY + 8} stroke={seatpostColor} strokeWidth="7" strokeLinecap="round" />
-      <ellipse cx={saddleX} cy={saddleY} rx="22" ry="5" fill={saddleColor} />
-
-      {/* Crank arm + chainring */}
-      <circle cx={bbX} cy={bbY} r="10" fill={crankColor} />
-      <line x1={bbX} y1={bbY} x2={bbX + 30} y2={bbY + 24} stroke={crankColor} strokeWidth="5" strokeLinecap="round" />
-      <circle cx={bbX + 30} cy={bbY + 24} r="6" fill="#1a1a1a" />
-
-      {/* Cassette near rear hub */}
-      <circle cx={rearCx} cy={rearCy} r="14" fill="none" stroke={color(selection.cassette, "#404040")} strokeWidth="3" />
-
-      {/* Chain (visual hint) */}
-      <path
-        d={`M ${bbX + 12} ${bbY - 4} Q ${(bbX + rearCx) / 2} ${(bbY + rearCy) / 2 - 30}, ${rearCx + 10} ${rearCy - 6}`}
-        fill="none"
-        stroke="#525252"
-        strokeWidth="2"
-      />
-
-      {/* Empty-state hint */}
-      {!frame && (
-        <text
-          x="400"
-          y="260"
-          textAnchor="middle"
-          fill="#525252"
-          fontSize="14"
-          fontFamily="ui-sans-serif, system-ui"
-        >
-          Pick a frame to start →
-        </text>
-      )}
+      <text
+        x="400"
+        y="245"
+        textAnchor="middle"
+        fill="#525252"
+        fontSize="14"
+        fontFamily="ui-sans-serif, system-ui"
+      >
+        Pick a frame to start →
+      </text>
     </svg>
-  );
-}
-
-function Wheel({
-  cx,
-  cy,
-  r,
-  tireWidth,
-  tireColor,
-  rimColor,
-}: {
-  cx: number;
-  cy: number;
-  r: number;
-  tireWidth: number;
-  tireColor: string;
-  rimColor: string;
-}) {
-  return (
-    <g>
-      {/* Tire */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={tireColor} strokeWidth={tireWidth} />
-      {/* Rim */}
-      <circle cx={cx} cy={cy} r={r - tireWidth / 2 - 4} fill="none" stroke="url(#rim)" strokeWidth="3" />
-      {/* Spokes */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const a = (i * Math.PI) / 4;
-        const inner = 6;
-        const outer = r - tireWidth / 2 - 4;
-        return (
-          <line
-            key={i}
-            x1={cx + Math.cos(a) * inner}
-            y1={cy + Math.sin(a) * inner}
-            x2={cx + Math.cos(a) * outer}
-            y2={cy + Math.sin(a) * outer}
-            stroke={rimColor}
-            strokeOpacity="0.4"
-            strokeWidth="1"
-          />
-        );
-      })}
-      {/* Hub */}
-      <circle cx={cx} cy={cy} r="5" fill="#262626" />
-    </g>
-  );
-}
-
-function ShockLine({
-  x1,
-  y1,
-  x2,
-  y2,
-  color,
-  thick,
-}: {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  color: string;
-  thick?: boolean;
-}) {
-  return (
-    <g>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={thick ? 14 : 10} strokeLinecap="round" />
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#0a0a0a" strokeWidth={thick ? 4 : 3} strokeOpacity="0.5" strokeLinecap="round" />
-    </g>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Discipline, Part, Selection } from "@/lib/types";
 import { compat } from "@/lib/compat";
+import PartImage from "./PartImage";
 
 interface Props {
   category: Category;
@@ -149,10 +150,7 @@ function PartCard({
           : "border-neutral-800 hover:border-bone hover:bg-neutral-900"
       }`}
     >
-      <div
-        className="size-12 shrink-0 rounded-md border border-neutral-800"
-        style={{ background: (part.attrs.color as string) ?? "#171717" }}
-      />
+      <PartImage part={part} size="md" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[11px] uppercase tracking-widest text-neutral-500">
           {part.brand}

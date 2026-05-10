@@ -1,4 +1,5 @@
 import type { Category, CompatIssue, Part } from "@/lib/types";
+import PartImage from "./PartImage";
 
 interface Props {
   category: Category;
@@ -23,12 +24,7 @@ export default function CategoryRow({
       }`}
     >
       <button onClick={onOpen} className="flex flex-1 items-center gap-3 text-left">
-        <div
-          className="size-9 shrink-0 rounded-lg border border-neutral-800"
-          style={{
-            background: (selected?.attrs.color as string) ?? "#171717",
-          }}
-        />
+        <PartImage part={selected} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="text-[11px] uppercase tracking-widest text-neutral-500">
             {category.label}

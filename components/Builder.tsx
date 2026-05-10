@@ -87,10 +87,9 @@ export default function Builder({ categories, parts, initialDiscipline }: Props)
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* Canvas */}
         <section className="lg:sticky lg:top-20 lg:self-start">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-3xl border border-neutral-900 bg-gradient-to-b from-neutral-900/60 to-neutral-950">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-neutral-900 bg-gradient-to-b from-neutral-900/60 to-neutral-950 sm:aspect-[16/10]">
             <BikeCanvas selection={selection} discipline={discipline} />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink to-transparent" />
-            <div className="absolute left-4 top-4 rounded-full bg-neutral-900/80 px-3 py-1 text-[11px] uppercase tracking-widest text-neutral-400 backdrop-blur">
+            <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-full bg-neutral-900/80 px-3 py-1 text-[11px] uppercase tracking-widest text-neutral-400 backdrop-blur">
               {discipline === "enduro" ? "Enduro Build" : "Downhill Build"}
             </div>
           </div>
